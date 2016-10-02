@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><templates><template autoinsert="true" context="java" deleted="false" description="test template" enabled="true" name="test">${imp:import(org.testng.annotations.Test)}
+${impStatic:importStatic('org.mockito.Mockito.*','org.mockito.BDDMockito.*','org.hamcrest.MatcherAssert.*','org.hamcrest.Matchers.*')}
+
+@${testType:newType(org.testng.annotations.Test)}
+public void should${cursor}() {
+    //given
+    //when
+    //then
+}</template></templates>
