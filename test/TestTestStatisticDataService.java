@@ -13,78 +13,67 @@ import static org.mockito.Mockito.mock;
 
 public class TestTestStatisticDataService {
 
-    private static final String PROJECT_FOO_PROJECT_BAR = "[{\"project\": \"Foo\"}, {\"project\": \"Bar\"}]";
-    private static final List<String> FOO_BAR_LIST = Arrays.asList( "Foo", "Bar" );
+    private static final String PROJECT_FOO_PROJECT_BAR = "{\"projects\": [{\"project\": \"Foo\"}, {\"project\": \"Bar\"}]}";
 
     @Test
-    public void shouldReadEmptyList() {
+    public void shouldReturnEmptyListIfServerReturnsEmptyList() {
         //given
-        final ITestStatisticServer iServer = mock( ITestStatisticServer.class );
-        given( iServer.readProjects() ).willReturn( "[]" );
+        final ITestStatisticServer mockedServer = mock( ITestStatisticServer.class );
+        given( mockedServer.readProjects() ).willReturn( "{\"projects\": []}" );
+        final TestStatisticDataService service = makeDataService( mockedServer );
+        //when
+        final List<String> result = service.getProjects();
+        //then
+        assertThat( result, is( Collections.emptyList() ) );
+    }
 
-        final TestStatisticDataService service = makeDataService( iServer );
+    @Test
+    public void shouldReturnProjectsNamesReturnFromJsonList() {
+        //given
+        final ITestStatisticServer mockedServer = mock( ITestStatisticServer.class );
+        given( mockedServer.readProjects() ).willReturn( PROJECT_FOO_PROJECT_BAR );
+        final TestStatisticDataService service = makeDataService( mockedServer );
         //when
         final List<String> projects = service.getProjects();
         //then
-        assertThat( projects, is( Collections.emptyList() ) );
+        assertThat( projects, is( Arrays.asList( "Foo", "Bar" ) ) );
     }
 
     @Test
-    public void shouldAlwaysReadDataFromServerOnFirstCall() {
+    public void shouldNotReadDataFromServerIfDataAreNotTooOld() {
         //given
-        final ITestStatisticServer iServer = mock(ITestStatisticServer.class);
-        given( iServer.readProjects() ).willReturn( PROJECT_FOO_PROJECT_BAR );
-        
-        final TestStatisticDataService service = makeDataService( iServer );
+        final ITestStatisticServer mockedServer = mock( ITestStatisticServer.class );
+        given( mockedServer.readProjects() ).willReturn( PROJECT_FOO_PROJECT_BAR );
+        final TestStatisticDataService service = makeDataService( mockedServer );
         //when
-        final List<String> projects = service.getProjects();
+        service.getProjects();
+        
+        given( mockedServer.readProjects() ).willReturn( "{\"projects\": [{\"project\": \"New\"}, {\"project\": \"Project\"}]}" );
+        
+        final List<String> secondRead = service.getProjects();
         //then
-        assertThat( projects, is( FOO_BAR_LIST ) );
+        assertThat( secondRead, is( Arrays.asList( "Foo", "Bar" ) ) );
     }
 
     @Test
-    public void shouldReturnCachedDataIfDataFreshEnough() {
+    public void shouldRequeryDataIfOneMinuteHasPassed() throws Exception {
         //given
-        final ITestStatisticServer iServer = mock( ITestStatisticServer.class );
-        given( iServer.readProjects() ).willReturn( PROJECT_FOO_PROJECT_BAR );
+        final ITestStatisticServer mockedServer = mock( ITestStatisticServer.class );
+        given( mockedServer.readProjects() ).willReturn( PROJECT_FOO_PROJECT_BAR );
 
-        final TestStatisticDataService service = makeDataService( iServer );
+        final ICurrentTimeProvider time = mock( ICurrentTimeProvider.class );
+        final LocalDateTime startTime = LocalDateTime.of( 2010, 8, 7, 8, 43 );
+        given( time.getCurrentTime() ).willReturn( startTime );
+
+        final TestStatisticDataService service = makeDataService( mockedServer, time );
         //when
-        final List<String> projects = service.getProjects();
-        assertThat( projects, is( FOO_BAR_LIST ) );
-        
-        // data changed on server
-        given( iServer.readProjects() ).willReturn( "[{\"project\": \"New\"}, {\"project\": \"Projects\"}]" );
+        service.getProjects();
 
-        // then
-        final List<String> projectsSecondRead = service.getProjects();
-        assertThat( projectsSecondRead, is( FOO_BAR_LIST ) ); // still returns the "old" data since they are not old enough
-    }
-
-    @Test
-    public void shouldRequeryDataIfDataTooOld() {
-        //given
-        final ITestStatisticServer iServer = mock( ITestStatisticServer.class );
-        given( iServer.readProjects() ).willReturn( PROJECT_FOO_PROJECT_BAR );
-
-        final ICurrentTimeProvider timeProvider = mock( ICurrentTimeProvider.class );
-        final LocalDateTime fakeNow = LocalDateTime.of( 2010, 8, 7, 8, 43 );
-        given( timeProvider.getCurrentTime() ).willReturn( fakeNow );
-
-        final TestStatisticDataService service = makeDataService( iServer, timeProvider );
-        //when
-        final List<String> projects = service.getProjects();
-        assertThat( projects, is( FOO_BAR_LIST ) );
-
-        // data changed on server
-        given( iServer.readProjects() ).willReturn( "[{\"project\": \"New\"}, {\"project\": \"Projects\"}]" );
-
-        // and one minute passed
-        given( timeProvider.getCurrentTime() ).willReturn( fakeNow.plus( Duration.ofSeconds( 61 ) ) );
-
-        // then
-        final List<String> projectsSecondRead = service.getProjects();
-        assertThat( projectsSecondRead, is( Arrays.asList( "New", "Projects" ) ) );
+        given( mockedServer.readProjects() ).willReturn( "{\"projects\": [{\"project\": \"New\"}, {\"project\": \"Project\"}]}" );
+        given( time.getCurrentTime() ).willReturn( startTime.plus( Duration.ofSeconds( 61 ) ) );
+        final List<String> secondRead = service.getProjects();
+        //then
+        assertThat( secondRead, is( Arrays.asList( "New", "Project" ) ) );
     }
 
     @Test( expectedExceptions = RuntimeException.class, expectedExceptionsMessageRegExp = ".*terribly.*" )
@@ -103,14 +92,11 @@ public class TestTestStatisticDataService {
     // helper methods
 
     private TestStatisticDataService makeDataService( final ITestStatisticServer server ) {
-        return makeDataService( server, new CurrentTimeProvider() );
+        return new TestStatisticDataService( server, new CurrentTimeProvider() );
     }
 
-    private TestStatisticDataService makeDataService( final ITestStatisticServer server, final ICurrentTimeProvider timeProvider ) {
-        return new TestStatisticDataService( server, timeProvider );
+    private TestStatisticDataService makeDataService( final ITestStatisticServer server, final ICurrentTimeProvider time ) {
+        return new TestStatisticDataService( server, time );
     }
-
-    // TODO Write actual ITestStaticServer implementation with HTTPClient -> fails, because
-    //      format wrong ---> something for integration tests??!!!
 
 }

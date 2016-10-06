@@ -6,6 +6,11 @@ public class LiveTestStatisticServer implements ITestStatisticServer {
 
     @Override
     public String readProjects() {
+        
+        if ( true ) {
+            throw new IllegalStateException(
+                    "need auth-token to talk to live statistic server (can be found in the slack channel" );
+        }
 
         try {
             final ProcessBuilder processBuilder = new ProcessBuilder("curl", "-kv", "https://130.211.118.12/meta/projects", 

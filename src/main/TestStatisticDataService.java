@@ -31,27 +31,23 @@ public class TestStatisticDataService {
 
         final String projectsRaw = _server.readProjects();
         final JsonParser parser = new JsonParser();
-        final JsonElement elem = parser.parse( projectsRaw ); /*
-                                                               * .getAsJsonObject
-                                                               * ().get(
-                                                               * "projects" );
-                                                               */
+        final JsonElement elem = parser.parse( projectsRaw ).getAsJsonObject().get( "projects" );
 
         final JsonArray array = elem.getAsJsonArray();
         final ArrayList<String> result = new ArrayList<>( array.size() );
-        
-        for(int i=0;i<array.size(); i++) {
+
+        for ( int i = 0; i < array.size(); i++ ) {
             final JsonObject obj = array.get( i ).getAsJsonObject();
             result.add( obj.get( "project" ).getAsString() );
         }
-        
+
         _cachedData = Collections.unmodifiableList( result );
         _cachedDataTime = _timeProvider.getCurrentTime();
         return _cachedData;
     }
 
     private boolean dataTooOld() {
-        return _cachedData == null || _cachedDataTime == null || 
+        return _cachedData == null || _cachedDataTime == null ||
                 _timeProvider.getCurrentTime().isAfter( _cachedDataTime.plus( Duration.ofSeconds( 60 ) ) );
     }
 }
