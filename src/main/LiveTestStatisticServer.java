@@ -6,16 +6,17 @@ public class LiveTestStatisticServer implements ITestStatisticServer {
 
     @Override
     public String readProjects() {
-        
+
         if ( true ) {
             throw new IllegalStateException(
-                    "need auth-token to talk to live statistic server (can be found in the slack channel" );
+                    "need auth-token to talk to live statistic server (can be found in the slack channel)" );
         }
 
         try {
-            final ProcessBuilder processBuilder = new ProcessBuilder("curl", "-kv", "https://130.211.118.12/meta/projects", 
+            final ProcessBuilder processBuilder =
+                    new ProcessBuilder( "curl", "-kv", "https://test-statistics.freiheit.com/meta/projects",
                     "-H", "Content-Type: application/json", 
-                    "-H", "auth-token: <add-auth-token-here>" );
+                            "-H", "auth-token: <add-auth-token-here>" );
             
             final BufferedReader reader = new BufferedReader( new InputStreamReader( processBuilder.start().getInputStream() ) );
             
@@ -32,6 +33,7 @@ public class LiveTestStatisticServer implements ITestStatisticServer {
 
     public static void main( final String[] args ) {
         final LiveTestStatisticServer liveTestStatisticServer = new LiveTestStatisticServer();
-        liveTestStatisticServer.readProjects();
+        final String projects = liveTestStatisticServer.readProjects();
+        System.out.println( projects );
     }
 }
