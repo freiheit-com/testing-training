@@ -16,7 +16,7 @@ public class LiveTestStatisticServer implements ITestStatisticServer {
             final ProcessBuilder processBuilder =
                     new ProcessBuilder( "curl", "-kv", "https://test-statistics.freiheit.com/meta/projects",
                     "-H", "Content-Type: application/json", 
-                            "-H", "auth-token: <add-auth-token-here>" );
+                            "-H", "auth-token: <add-meta-token-here" );
             
             final BufferedReader reader = new BufferedReader( new InputStreamReader( processBuilder.start().getInputStream() ) );
             
